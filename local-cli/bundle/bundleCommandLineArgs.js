@@ -63,4 +63,12 @@ module.exports = [
     description: 'Try to fetch transformed JS code from the global cache, if configured.',
     default: false,
   },
+  {
+    command: '--manifest-output [String]',
+    description: 'File name where to store the manifest file for resulting bundle, ex. /output/base.manifest.json',
+  },
+  {
+    command: '--manifest-file [path]',
+    description: 'File name where to store the manifest file for resulting bundle, ex. /output/base.manifest.json',
+  }
 ];

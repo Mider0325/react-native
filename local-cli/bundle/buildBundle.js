@@ -89,65 +89,55 @@ function buildBundle(
     platform: args.platform,
   };
 
-  // If a packager instance was not provided, then just create one for this
-  // bundle command and close it down afterwards.
-  var shouldClosePackager = false;
-  if (!packagerInstance) {
-    const assetExts = (config.getAssetExts && config.getAssetExts()) || [];
-    const sourceExts = (config.getSourceExts && config.getSourceExts()) || [];
-    const platforms = (config.getPlatforms && config.getPlatforms()) || [];
+  const assetExts = (config.getAssetExts && config.getAssetExts()) || [];
+  const sourceExts = (config.getSourceExts && config.getSourceExts()) || [];
+  const platforms = (config.getPlatforms && config.getPlatforms()) || [];
 
-    const transformModulePath = args.transformer
-      ? path.resolve(args.transformer)
-      : config.getTransformModulePath();
+  const transformModulePath = args.transformer
+    ? path.resolve(args.transformer)
+    : config.getTransformModulePath();
 
-    const providesModuleNodeModules =
-      typeof config.getProvidesModuleNodeModules === 'function'
-        ? config.getProvidesModuleNodeModules()
-        : defaultProvidesModuleNodeModules;
+  const providesModuleNodeModules =
+    typeof config.getProvidesModuleNodeModules === 'function'
+      ? config.getProvidesModuleNodeModules()
+      : defaultProvidesModuleNodeModules;
 
-    /* $FlowFixMe(>=0.54.0 site=react_native_fb,react_native_oss) This comment
-     * suppresses an error found when Flow v0.54 was deployed. To see the error
-     * delete this comment and run Flow. */
-    const terminal = new Terminal(process.stdout);
-    const options = {
-      assetExts: defaultAssetExts.concat(assetExts),
-      assetRegistryPath: ASSET_REGISTRY_PATH,
-      blacklistRE: config.getBlacklistRE(),
-      extraNodeModules: config.extraNodeModules,
-      getPolyfills: config.getPolyfills,
-      getTransformOptions: config.getTransformOptions,
-      globalTransformCache: null,
-      hasteImpl: config.hasteImpl,
-      maxWorkers: args.maxWorkers,
-      platforms: defaultPlatforms.concat(platforms),
-      postMinifyProcess: config.postMinifyProcess,
-      postProcessModules: config.postProcessModules,
-      postProcessBundleSourcemap: config.postProcessBundleSourcemap,
-      projectRoots: config.getProjectRoots(),
-      providesModuleNodeModules: providesModuleNodeModules,
-      resetCache: args.resetCache,
-      reporter: new TerminalReporter(terminal),
-      runBeforeMainModule: config.runBeforeMainModule,
-      sourceExts: defaultSourceExts.concat(sourceExts),
-      transformCache: TransformCaching.useTempDir(),
-      transformModulePath: transformModulePath,
-      useDeltaBundler: false,
-      watch: false,
-      workerPath: config.getWorkerPath && config.getWorkerPath(),
-    };
+  const terminal = new Terminal(process.stdout);
 
-    packagerInstance = new Server(options);
-    shouldClosePackager = true;
-  }
+  const server = new Server({
+    assetExts: defaultAssetExts.concat(assetExts),
+    assetRegistryPath: ASSET_REGISTRY_PATH,
+    blacklistRE: config.getBlacklistRE(),
+    cacheStores: config.cacheStores,
+    cacheVersion: config.cacheVersion,
+    dynamicDepsInPackages: config.dynamicDepsInPackages,
+    enableBabelRCLookup: config.getEnableBabelRCLookup(),
+    extraNodeModules: config.extraNodeModules,
+    getModulesRunBeforeMainModule: config.getModulesRunBeforeMainModule,
+    getPolyfills: config.getPolyfills,
+    getTransformOptions: config.getTransformOptions,
+    globalTransformCache: null,
+    hasteImplModulePath: config.hasteImplModulePath,
+    maxWorkers: args.maxWorkers,
+    platforms: defaultPlatforms.concat(platforms),
+    postMinifyProcess: config.postMinifyProcess,
+    postProcessModules: config.postProcessModules,
+    postProcessBundleSourcemap: config.postProcessBundleSourcemap,
+    projectRoots: config.getProjectRoots(),
+    providesModuleNodeModules: providesModuleNodeModules,
+    resetCache: args.resetCache,
+    reporter: new TerminalReporter(terminal),
+    sourceExts: sourceExts.concat(defaultSourceExts),
+    transformCache: TransformCaching.useTempDir(),
+    transformModulePath: transformModulePath,
+    watch: false,
+    workerPath: config.getWorkerPath && config.getWorkerPath(),
+    manifestFile: args.manifestFile,
+  });
 
-  const bundlePromise = output.build(packagerInstance, requestOpts)
-    .then(bundle => {
-      if (shouldClosePackager) {
-        packagerInstance.end();
-      }
-      return saveBundle(output, bundle, args);
-    });
+  const bundle = await output.build(server, requestOpts);
+
+  await output.save(bundle, args, log);
 
   // Save the assets of the bundle
   const assets = bundlePromise
